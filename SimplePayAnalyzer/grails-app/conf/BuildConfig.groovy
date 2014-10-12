@@ -74,5 +74,6 @@ grails.project.dependency.resolution = {
 		
 		runtime ':email-confirmation:2.0.8'
         runtime ':mail:1.0.1'
+		compile ":csv:0.3.1"
     }
 }
