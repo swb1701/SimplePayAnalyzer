@@ -72,8 +72,8 @@ grails.project.dependency.resolution = {
 		compile ":spring-security-core:2.0-RC2"
 		compile ":spring-security-ui:1.0-RC1"
 		
-		runtime ':email-confirmation:2.0.8'
-        runtime ':mail:1.0.1'
+		//runtime ':email-confirmation:2.0.8'
+        //runtime ':mail:1.0.1'
 		compile ":csv:0.3.1"
     }
 }
