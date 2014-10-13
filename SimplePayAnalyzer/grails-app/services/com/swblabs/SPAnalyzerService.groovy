@@ -14,7 +14,6 @@ class SPAnalyzerService {
 	  rec.total+=trans.amount
 	  rec.totalTrans++
 	  def monthIndex=getMonthIndex(trans.date)-oldindex
-	  println(monthIndex)
 	  def oldmonth=rec.months[monthIndex]
 	  if (oldmonth==null) {
 		  oldmonth=["max":0]
@@ -26,11 +25,12 @@ class SPAnalyzerService {
 	}
 	
     def analyze() {
-		def oldest=getOldestDate()
-		def newest=getNewestDate()
+		def range=getDateRange()
+		def oldest=range[0]
+		def newest=range[1]
 		def oldindex=getMonthIndex(oldest)
 		def newindex=getMonthIndex(newest)
-		println("oldest date="+oldest+" newest="+newest+" indexdif="+(newindex-oldindex))
+		println("oldest date="+oldest+" newest="+newest+" range="+(newindex-oldindex))
 		def nameMap=[:]
 		SPTransaction.all.each {
 			updateMap(nameMap,it,oldindex,newindex)
@@ -49,23 +49,15 @@ class SPAnalyzerService {
 		return(year*12+mon)
 	}
 	
-	def getOldestDate() {
+	def getDateRange() {
 		def all=SPTransaction.all
-		def result=all.first().date
+		def result=[all.first().date,all.first().date]
 		all.each {
-			if (it.date.compareTo(result)<0) {
-				result=it.date
+			if (it.date.compareTo(result[0])<0) {
+				result[0]=it.date
 			}
-		}
-		return(result)
-	}
-	
-	def getNewestDate() {
-		def all=SPTransaction.all
-		def result=all.first().date
-		all.each {
-			if (it.date.compareTo(result)>0) {
-				result=it.date
+			if (it.date.compareTo(result[1])>0) {
+				result[1]=it.date
 			}
 		}
 		return(result)
