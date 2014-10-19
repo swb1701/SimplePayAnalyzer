@@ -10,7 +10,10 @@
 // if (System.properties["${appName}.config.location"]) {
 //    grails.config.locations << "file:" + System.properties["${appName}.config.location"]
 // }
-
+def loc = ['../../Creds.groovy'].grep { new File(it).exists() }.first();
+def localConfig = new ConfigSlurper(grailsSettings.grailsEnv).parse(new File(loc).toURI().toURL())
+aws.simplepay.email=localConfig.aws.simplepay.email
+aws.simplepay.password=localConfig.aws.simplepay.password
 grails.project.groupId = appName // change this to alter the default package name and Maven publishing destination
 
 // The ACCEPT header will not be used for content negotiation for user agents containing the following strings (defaults to the 4 major rendering engines)

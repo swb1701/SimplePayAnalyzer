@@ -4,6 +4,7 @@ class HomeController {
 	
 	def DataLoaderService
 	def SPAnalyzerService
+	def AWSWebDriverService
 
     def index() { }
 	
@@ -11,10 +12,7 @@ class HomeController {
 		SPAnalyzerService.analyze()
 	}
 	
-	/*
-	def load() {
-	  def csvFile=grailsApplication.parentContext.getResource("data/all.csv").file
-	  DataLoaderService.loadData(csvFile,false)
+	def aws() {
+		AWSWebDriverService.loadAWSData()	
 	}
-	*/
 }
