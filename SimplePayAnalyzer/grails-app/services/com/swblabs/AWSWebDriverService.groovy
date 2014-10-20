@@ -5,6 +5,7 @@ import grails.transaction.Transactional
 import org.jsoup.Connection
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.select.Elements
 import org.openqa.selenium.By
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.firefox.FirefoxBinary
@@ -17,6 +18,7 @@ class AWSWebDriverService {
 	def getcsv=false //whether to get csv of all transactions
 	def getsub=true //whether to crawl subscription data
 	def grailsApplication
+	def cookies=[:]
 
 	//url for date ranges when fetching all transactions
 	def csvUrl="https://payments.amazon.com/exportTransactions?searchfilter=all_activity&searchPeriod=LAST_SEVEN_DAYS&criteriaSelect=free&startMonth=10&startDay=11&startYear=2010&endMonth=10&endDay=18&endYear=2020&format=csv&x=44&y=9"
@@ -35,30 +37,119 @@ class AWSWebDriverService {
 		driver.findElement(By.id("merchant-sign-in")).click()
 		driver.findElement(By.xpath("(//input[@name='product'])[3]")).click()
 		driver.findElement(By.cssSelector("input.amzn-button")).click()
-		Thread.sleep(2000) //needed to allow page to come up
+		Thread.sleep(1000) //needed to allow page to come up
 		driver.findElement(By.id("ap_email")).clear()
 		driver.findElement(By.id("ap_email")).sendKeys(grailsApplication.config.aws.simplepay.email)
 		driver.findElement(By.id("ap_password")).clear()
 		driver.findElement(By.id("ap_password")).sendKeys(grailsApplication.config.aws.simplepay.password)
 		driver.findElement(By.id("signInSubmit")).click()
+		driver.manage().getCookies().each { cookie ->
+			cookies[cookie.name]=cookie.value //capture all the cookies
+		}
 
 		if (getcsv) { //if we need to fetch the csv we need to do it ourselves using the session cookies
 			Connection conn=Jsoup.connect(csvUrl)
 			conn.timeout(15000) //it takes a long time to do a full report -- allow 15 seconds
 			conn.ignoreContentType(true) //it will be a content type jsoup can't handle
+			conn.cookie(cookies)
+			/*
 			driver.manage().getCookies().each { cookie ->
 				//println("Cookie "+cookie.name+"="+cookie.value)
 				conn.cookie(cookie.name,cookie.value) //give all the cookies to jsoup
 			}
+			*/
 			Connection.Response resp=conn.execute() //execute the url
 			new File("o:/my.csv")<<resp.bodyAsBytes() //for testing put it to a file, but would normally just merge it into our current DB
 		}
 		
 		if (getsub) {
+			//table has: name, status (active/cancelled), created on (e.g. September 26, 2014), expires on (never expires), details
+			//details has: (txn_detail_table) -- just gets you amount, subscription id
+			/*
+			 Pay: 	Nova Labs, Inc
+			 For: 	Nova Labs Subscription for first last
+			 Subscription Terms: 	Pay $100.00 every Month from 09/26/2014
+			 Subscription Status: 	Active
+			 Valid From: 	September 26, 2014
+			 Valid Until: 	never expires
+			 Subscription ID: 	xxx
+			 */
+			println("***Fetching detail links")
+			def details=[]
 			driver.findElement(By.linkText("Your Subscribers List")).click() //click on subscriber list
+			while(true) {
+			  driver.findElements(By.cssSelector("a[href^=subscriptiondetail]")).each { detail ->
+				  println(detail.getAttribute("href"))
+				  details<<detail.getAttribute("href")
+			  }
+			  //break; //for debugging after one page
+			  try {
+				  def older=driver.findElement(By.linkText("Older subscriptions"))
+				  if (older==null) break;
+				  older.click()	
+			  } catch (Exception e) {
+			    break;
+			  }
+			}
+			println("***Fetching details")
+			/*
+			def href=details[0]
+				println(href)
+				Document doc=Jsoup.connect(href).cookies(cookies).get()
+				println(doc.toString())
+				doc.select("table.txn_detail_table tr td").each { element ->
+					println(element.text())
+				}
+				*/
+			details.each { href ->
+				try {
+				println(href)
+				Document doc=Jsoup.connect(href).cookies(cookies).timeout(15000).get()
+				Elements fields=doc.select("table.txn_detail_table tr td")
+				def subid=fields[6].text()
+				SPSubscription sub=SPSubscription.findBySubscriptionId(subid)
+				if (sub==null) {
+					println("Detected new subscription, adding to DB...")
+					fields.each { println(it.text()) }
+					//leave detail feeds as strings and then provide additional fields with parsed interpretation
+					def vfdate=Date.parse('MMMM dd, yyyy',fields[4].text()) //parse valid from date
+					//println("date="+vfdate)
+					int pos=fields[1].text().indexOf(" for ")
+					def pf=fields[1].text().substring(pos+5) //extract name from "For:" field
+					//println("pf="+pf)
+					//println("fields[2]="+fields[2].text())
+					//extract amount, period, and date from terms field
+					def matcher=fields[2].text()=~/Pay \$([0-9.]+) every ([^ ]+) from ([0-9][0-9]\/[0-9][0-9]\/[0-9][0-9][0-9][0-9])/
+					//println(matcher[0][1]+","+matcher[0][2]+","+matcher[0][3])
+					def spsub=new SPSubscription(
+						payee:fields[0].text(),
+						payfor:fields[1].text(),
+						terms:fields[2].text(),
+						status:fields[3].text(),
+						validFrom:fields[4].text(),
+						validUntil:fields[5].text(),
+						subscriptionId:fields[6].text(),
+						fromDate:vfdate,
+						name:pf,
+						amount:Float.parseFloat(matcher[0][1]),
+						period:matcher[0][2])
+					if (!spsub.save()) {
+						spsub.errors.each { println it }
+					}
+				}
+				} catch (Exception e) {
+				  e.printStackTrace()
+				}
+				/*
+				doc.select("table.txn_detail_table tr td").each { element ->
+					println(element.text())
+				}*/
+			}
+			/*
 			driver.findElements(By.cssSelector("table[id='ieflushtable'] tr td")).each { element -> //show that we can parse the table
 				println(element.text)
 			}
+			*/
 		}
 		
 		driver.quit()
