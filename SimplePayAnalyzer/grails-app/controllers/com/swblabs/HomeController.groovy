@@ -15,4 +15,9 @@ class HomeController {
 	def aws() {
 		AWSWebDriverService.loadAWSData()	
 	}
+	
+	def subs() {
+		def active=SPSubscription.findAllByStatus('Active')
+		["subs":active]
+	}
 }
