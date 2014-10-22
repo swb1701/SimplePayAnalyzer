@@ -14,6 +14,14 @@ class DataLoaderService {
 		}
 	}
 	
+	def loadData(String csvString,boolean merge) {
+		int row=0;
+		csvString.eachCsvLine { items ->
+			if (row>0) processRow(items,merge)
+			row++
+		}
+	}
+	
 	def convertAmount(String amt) {
 		amt=amt.replace(",","")
 		if (amt.startsWith("(")) {
@@ -36,10 +44,12 @@ class DataLoaderService {
 		String reference=items[8]
 		boolean skip=false
 		if (merge) {
-		  SPTransaction trans=SPTransaction.findWhere(date:date,name:name,amount:amount)
+		  //SPTransaction trans=SPTransaction.findWhere(date:date,name:name,amount:amount)
+		  SPTransaction trans=SPTransaction.findByTransactionId(transactionId)
 		  if (trans!=null) skip=true
 		}
 		if (!skip) {
+		  println("Adding transaction "+date+" "+name+" "+amount)
 		  SPTransaction trans=new SPTransaction(date:date,type:type,toFrom:toFrom,name:name,status:status,amount:amount,fees:fees,transactionId:transactionId,reference:reference)
 		  trans.save()
 		}

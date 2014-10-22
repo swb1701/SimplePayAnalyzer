@@ -15,7 +15,8 @@ import org.openqa.selenium.firefox.FirefoxProfile
 @Transactional
 class AWSWebDriverService {
 
-	def getcsv=false //whether to get csv of all transactions
+	def DataLoaderService
+	def getcsv=true //whether to get csv of all transactions
 	def getsub=true //whether to crawl subscription data
 	def grailsApplication
 	def cookies=[:]
@@ -45,21 +46,6 @@ class AWSWebDriverService {
 		driver.findElement(By.id("signInSubmit")).click()
 		driver.manage().getCookies().each { cookie ->
 			cookies[cookie.name]=cookie.value //capture all the cookies
-		}
-
-		if (getcsv) { //if we need to fetch the csv we need to do it ourselves using the session cookies
-			Connection conn=Jsoup.connect(csvUrl)
-			conn.timeout(15000) //it takes a long time to do a full report -- allow 15 seconds
-			conn.ignoreContentType(true) //it will be a content type jsoup can't handle
-			conn.cookie(cookies)
-			/*
-			driver.manage().getCookies().each { cookie ->
-				//println("Cookie "+cookie.name+"="+cookie.value)
-				conn.cookie(cookie.name,cookie.value) //give all the cookies to jsoup
-			}
-			*/
-			Connection.Response resp=conn.execute() //execute the url
-			new File("o:/my.csv")<<resp.bodyAsBytes() //for testing put it to a file, but would normally just merge it into our current DB
 		}
 		
 		if (getsub) {
@@ -152,6 +138,42 @@ class AWSWebDriverService {
 			*/
 		}
 		
+		if (getcsv) { //if we need to fetch the csv we need to do it ourselves using the session cookies
+			Thread.sleep(5000)
+			Connection conn=Jsoup.connect(csvUrl)
+			conn.timeout(60000) //it takes a long time to do a full report -- allow 60 seconds
+			conn.ignoreContentType(true) //it will be a content type jsoup can't handle
+			conn.cookies(cookies)
+			/*
+			driver.manage().getCookies().each { cookie ->
+				//println("Cookie "+cookie.name+"="+cookie.value)
+				conn.cookie(cookie.name,cookie.value) //give all the cookies to jsoup
+			}
+			*/
+			println("Downloading transactions report...")
+			Connection.Response resp=conn.execute() //execute the url
+			File file=File.createTempFile("temp",".csv")
+			file<<resp.bodyAsBytes()
+			println("Parsing transactions report...")
+			DataLoaderService.loadData(file,true)
+			//new File("o:/my.csv")<<resp.bodyAsBytes() //for testing put it to a file, but would normally just merge it into our current DB
+			
+			/*
+			//if details are missing, fill them in with a detail query
+			SPTransaction.all.each { trans ->
+				if (trans.spFor==null) {
+					def href="https://payments.amazon.com/txndetail?transactionId="+trans.transactionId
+					Document doc=Jsoup.connect(href).cookies(cookies).timeout(15000).get()
+					Elements fields=doc.select("table.txnDetails tr td")
+					trans.dateCompleted=fields[3].text()
+					trans.paymentMethod=fields[5].text()
+					trans.spFor=fields[6].text()
+					trans.referenceId=fields[9].text()
+				}
+			}
+			*/
+		}
+
 		driver.quit()
 	}
 }
