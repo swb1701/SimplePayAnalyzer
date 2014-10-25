@@ -10,7 +10,7 @@
 <table>
 <tr><th>Meetup</th><th>Revenue</th><th>Attendees</th><th>Amounts Payed</th></tr>
 <g:each in="${meetups.entrySet().sort{it.value.total}.reverse()}" var="meetup">
-<tr><td>${meetup.key}</td><td>${meetup.value.total}</td><td>${meetup.value.attendees} -- ${meetup.value.names}</td><td>${meetup.value.amounts}</td></tr>
+<tr><td>${meetup.key}</td><td>${meetup.value.total}</td><td>Transactions=${meetup.value.attendees} Names=${meetup.value.names.size()} ${meetup.value.names}</td><td>${meetup.value.amounts}</td></tr>
 </g:each>
 </table>  
   </div>
