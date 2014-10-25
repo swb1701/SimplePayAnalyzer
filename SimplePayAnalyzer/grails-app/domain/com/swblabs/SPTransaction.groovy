@@ -19,11 +19,16 @@ class SPTransaction {
 	String spFor //has details of what it was for
 	String referenceId
 	
+	static mapping={
+		transactionId index: "transactionId_idx"
+	}
+	
     static constraints = {
 		reference nullable: true
 		dateCompleted nullable: true
 		paymentMethod nullable: true
 		spFor nullable: true
 		referenceId nullable: true
+		transactionId unique: true
     }
 }

@@ -14,7 +14,12 @@ class SPSubscription {
 	String name
 	float amount
 	String period
-
+	
+	static mapping={
+		subscriptionId index: "subscriptionId_idx"
+	}
+	
     static constraints = {
+		subscriptionId unique: true
     }
 }
