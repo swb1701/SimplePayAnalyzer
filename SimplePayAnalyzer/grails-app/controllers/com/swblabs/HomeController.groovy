@@ -5,6 +5,7 @@ class HomeController {
 	def DataLoaderService
 	def SPAnalyzerService
 	def AWSWebDriverService
+	def AnalyticsService
 
     def index() { }
 	
@@ -19,5 +20,10 @@ class HomeController {
 	def subs() {
 		def active=SPSubscription.findAllByStatus('Active')
 		["subs":active]
+	}
+	
+	def meetups() {
+		def map=AnalyticsService.getMeetupRevenueStats()
+		["meetups":map]
 	}
 }
