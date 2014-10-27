@@ -38,6 +38,7 @@ class DataLoaderService {
 		String toFrom=items[2]
 		String name=items[3]
 		String status=items[4]
+		println("Scanning transaction "+date+" "+name+"...")
 		float amount=convertAmount(items[5])
 		float fees=convertAmount(items[6])
 		String transactionId=items[7]

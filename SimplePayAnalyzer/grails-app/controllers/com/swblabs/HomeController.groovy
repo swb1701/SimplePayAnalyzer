@@ -29,4 +29,9 @@ class HomeController {
 		def map=AnalyticsService.getMeetupRevenueStats()
 		["meetups":map]
 	}
+	
+	def dates() {
+		def dates=AWSWebDriverService.getRecentDates()
+		println(dates)
+	}
 }

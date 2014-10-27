@@ -23,6 +23,17 @@ class AWSWebDriverService {
 
 	//url for date ranges when fetching all transactions
 	def csvUrl="https://payments.amazon.com/exportTransactions?searchfilter=all_activity&searchPeriod=LAST_SEVEN_DAYS&criteriaSelect=free&startMonth=10&startDay=11&startYear=2010&endMonth=10&endDay=18&endYear=2020&format=csv&x=44&y=9"
+	def csvUrlPattern="https://payments.amazon.com/exportTransactions?searchfilter=all_activity&searchPeriod=LAST_SEVEN_DAYS&criteriaSelect=free&startMonth=<smonth>&startDay=<sday>&startYear=<syear>&endMonth=10&endDay=18&endYear=2020&format=csv&x=44&y=9"
+	
+	def getRecentDates() { //need to test this when no rows present (returns null?)
+		def recentSubDate=SPSubscription.createCriteria().get {
+			projections { max "fromDate" }
+		}
+		def recentTransDate=SPTransaction.createCriteria().get {
+			projections { max "date" }
+		}
+		return(["recentSubDate":recentSubDate,"recentTransDate":recentTransDate])
+	}
 
 	def fillInDetails(cookies) {
 		def errcnt=0 //consecutive errors
@@ -51,6 +62,9 @@ class AWSWebDriverService {
 
 
 	def loadAWSData() {
+		def dates=getRecentDates() //get the most recent date in our db for subscriptions and transactions
+		def lastSubDate=new Date((long)(dates.recentSubDate.getTime()-24*60*60*1000)) //set threshold to one day earlier than our last subscription
+		def lastTransDate=new Date((long)(dates.recentTransDate.getTime()-24*60*60*1000)) //set threshold to one day earlier than out last transaction
 		//invoke Firefox through web driver (usually won't require specific path -- we'll move this out to a config file if it stays)
 		WebDriver driver=new FirefoxDriver(new FirefoxBinary(new File("e:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe")),new FirefoxProfile())
 		/*//for reference: taking a screenshot example:
@@ -87,14 +101,26 @@ class AWSWebDriverService {
 			 Subscription ID: 	xxx
 			 */
 			println("***Fetching detail links")
-			def details=[]
+			def details=[] //consider only crawling those who date in the original table column is newer than the newest DB date
 			driver.findElement(By.linkText("Your Subscribers List")).click() //click on subscriber list
-			while(true) {
+			boolean skip=false
+			while(!skip) {
 				driver.findElements(By.cssSelector("a[href^=subscriptiondetail]")).each { detail ->
-					println(detail.getAttribute("href"))
-					details<<detail.getAttribute("href")
+					if (!skip) {
+						def datetd=detail.findElement(By.xpath("../../td[position()=3]"))
+						println(datetd.text)
+						def subdate=Date.parse('MMMM dd, yyyy',datetd.text) //parse valid from date
+						if (subdate.before(lastSubDate)) {
+							skip=true //if we're reading things older than we have in the DB then skip the rest (because things are inverse date order on the web pages)
+							println("We've reached an earlier date than the latest in the DB, skipping the rest...")
+						} else {
+							println(detail.getAttribute("href"))
+							details<<detail.getAttribute("href")
+						}
+					}
 				}
 				//break; //for debugging after one page
+				if (skip) break; //break out if we've read up to the date we have in the db
 				try {
 					def older=driver.findElement(By.linkText("Older subscriptions"))
 					if (older==null) break;
@@ -166,6 +192,14 @@ class AWSWebDriverService {
 
 		if (getcsv) { //if we need to fetch the csv we need to do it ourselves using the session cookies
 			Thread.sleep(5000)
+
+			def cal=Calendar.getInstance()
+			cal.setTime(lastTransDate)
+			def yr=cal.get(Calendar.YEAR).toString()
+			def mo=(cal.get(Calendar.MONTH)+1).toString()
+			def dy=cal.get(Calendar.DATE).toString()
+			csvUrl=csvUrlPattern.replaceAll("<syear>",yr).replaceAll("<smonth>",mo).replaceAll("<sday>",dy)
+			println("csvQuery="+csvUrl)
 			Connection conn=Jsoup.connect(csvUrl)
 			conn.timeout(60000) //it takes a long time to do a full report -- allow 60 seconds
 			conn.ignoreContentType(true) //it will be a content type jsoup can't handle
@@ -178,19 +212,19 @@ class AWSWebDriverService {
 			 */
 			fillInDetails(cookies) //do some filling in of details while the cookies are still fresh
 
-			 println("Downloading transactions report...")
-			 Connection.Response resp=conn.execute() //execute the url
-			 File file=File.createTempFile("temp",".csv")
-			 file<<resp.bodyAsBytes()
-			 println("Parsing transactions report...")
-			 DataLoaderService.loadData(file,true)
-			 file.delete()
+			println("Downloading transactions report...")
+			Connection.Response resp=conn.execute() //execute the url
+			File file=File.createTempFile("temp",".csv")
+			file<<resp.bodyAsBytes()
+			println("Parsing transactions report...")
+			DataLoaderService.loadData(file,true)
+			file.delete()
 
 			//new File("o:/my.csv")<<resp.bodyAsBytes() //for testing put it to a file, but would normally just merge it into our current DB
 
 			//if details are missing, fill them in with a detail query
 			fillInDetails(cookies)
-			
+
 		}
 
 		driver.quit()

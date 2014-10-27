@@ -22,4 +22,7 @@ class AnalyticsService {
 		}
 		return(map)
     }
+	
+	def topics=["laser","novarrg","robot build","malware","kicad","safety orientation","prototype electronics","soldering","composites","cnc","arduino","takeapart","metal shaping","wearable",
+		"raspberry pi","minecraft","woodworking","appinventor","lathe","python"]
 }
