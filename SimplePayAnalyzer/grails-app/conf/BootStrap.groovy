@@ -24,7 +24,7 @@ class BootStrap {
 		//println("Loading Data...")
 		//def csvFile=grailsApplication.parentContext.getResource("data/all.csv").file
 		//DataLoaderService.loadData(csvFile,false)
-		//com.swblabs.AWSPollJob.schedule(4*60*60*1000) //every 4 hours
+		com.swblabs.AWSPollJob.schedule(4*60*60*1000) //every 4 hours
 	}
 	def destroy = {
 	}

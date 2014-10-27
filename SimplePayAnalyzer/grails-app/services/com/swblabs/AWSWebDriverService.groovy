@@ -25,7 +25,7 @@ class AWSWebDriverService {
 	def csvUrl="https://payments.amazon.com/exportTransactions?searchfilter=all_activity&searchPeriod=LAST_SEVEN_DAYS&criteriaSelect=free&startMonth=10&startDay=11&startYear=2010&endMonth=10&endDay=18&endYear=2020&format=csv&x=44&y=9"
 	def csvUrlPattern="https://payments.amazon.com/exportTransactions?searchfilter=all_activity&searchPeriod=LAST_SEVEN_DAYS&criteriaSelect=free&startMonth=<smonth>&startDay=<sday>&startYear=<syear>&endMonth=10&endDay=18&endYear=2020&format=csv&x=44&y=9"
 	
-	def getRecentDates() { //need to test this when no rows present (returns null?)
+	def getRecentDates() { //need to test this when no rows present (returns null?) -- confirmed returns null
 		def recentSubDate=SPSubscription.createCriteria().get {
 			projections { max "fromDate" }
 		}
@@ -63,8 +63,18 @@ class AWSWebDriverService {
 
 	def loadAWSData() {
 		def dates=getRecentDates() //get the most recent date in our db for subscriptions and transactions
-		def lastSubDate=new Date((long)(dates.recentSubDate.getTime()-24*60*60*1000)) //set threshold to one day earlier than our last subscription
-		def lastTransDate=new Date((long)(dates.recentTransDate.getTime()-24*60*60*1000)) //set threshold to one day earlier than out last transaction
+		def lastSubDate=null
+		if (dates.recentSubDate==null) {
+		  lastSubDate=new Date(0) //1970 ;)
+		} else {
+		  lastSubDate=new Date((long)(dates.recentSubDate.getTime()-24*60*60*1000)) //set threshold to one day earlier than our last subscription
+		}
+		def lastTransDate=null
+		if (dates.recentTransDate==null) {
+		  lastTransDate=new Date(0)
+		} else {
+		  lastTransDate=new Date((long)(dates.recentTransDate.getTime()-24*60*60*1000)) //set threshold to one day earlier than out last transaction
+		}
 		//invoke Firefox through web driver (usually won't require specific path -- we'll move this out to a config file if it stays)
 		WebDriver driver=new FirefoxDriver(new FirefoxBinary(new File("e:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe")),new FirefoxProfile())
 		/*//for reference: taking a screenshot example:

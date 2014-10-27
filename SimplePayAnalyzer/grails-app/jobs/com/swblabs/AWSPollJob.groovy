@@ -1,4 +1,4 @@
-package com.sra.awsdash
+package com.swblabs
 
 class AWSPollJob {
 	static triggers = {
