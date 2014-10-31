@@ -21,10 +21,19 @@ class HomeController {
 	}
 	
 	def subs() {
-		def active=SPSubscription.findAllByStatus('Active')
+		def active=SPSubscription.findAllByStatus('Active').collect { sub->
+			[name:sub.name,amount:sub.amount,fromDate:sub.fromDate.format('yyyy-MM-dd')]
+		}
 		["subs":active]
 	}
 	
+	def subgraph() {
+		def active=SPSubscription.findAllByStatus('Active').collect { sub->
+			[name:sub.name,amount:sub.amount,fromDate:sub.fromDate.format('yyyy-MM-dd')]
+		}
+		[data:active]
+	}
+
 	def meetups() {
 		def map=AnalyticsService.getMeetupRevenueStats()
 		["meetups":map]

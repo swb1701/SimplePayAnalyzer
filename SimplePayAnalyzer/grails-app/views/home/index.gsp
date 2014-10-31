@@ -86,6 +86,7 @@
 			<h1>Analytics</h1>
 			<ul>
 				<li><a href="/home/subs">List Subscribers</a></li>
+				<li><a href="/home/subgraph">Graphical Subscriber List</a></li>
 				<li><a href="/home/meetups">List Meetups By Revenue</a></li>
 			</ul>
 		</div>
